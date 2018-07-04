@@ -253,6 +253,10 @@ WorldGui::~WorldGui()
     delete oDlg;
   if (canvas)
     delete canvas;
+
+  // remove the old callback, wherever it was
+  Fl::remove_idle((Fl_Timeout_Handler)UpdateCallback, this);
+  Fl::remove_timeout((Fl_Timeout_Handler)UpdateCallback, this);
 }
 
 void WorldGui::Show()
@@ -399,7 +403,7 @@ bool WorldGui::Save(const char *filename)
   return World::Save(filename);
 }
 
-static void UpdateCallback(WorldGui *world)
+void WorldGui::UpdateCallback(WorldGui *world)
 {
   world->Update();
 }

@@ -1472,6 +1472,7 @@ updates. */
   static void fasttimeCb(Fl_Widget *w, WorldGui *wg);
   static void resetViewCb(Fl_Widget *w, WorldGui *wg);
   static void moreHelptCb(Fl_Widget *w, WorldGui *wg);
+  static void UpdateCallback(WorldGui *world);
 
   // GUI functions
   bool saveAsDialog();

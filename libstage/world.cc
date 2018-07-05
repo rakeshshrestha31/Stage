@@ -142,7 +142,7 @@ World::World(const std::string &,
       event_queues(1), // use 1 thread by default
       pending_update_callbacks(), active_energy(), active_velocity(),
       sim_interval(1e5), // 100 msec has proved a good default
-      update_cb_count(0)
+      update_cb_count(0), running(false)
 {
   if (!Stg::InitDone()) {
     PRINT_WARN("Stg::Init() must be called before a World is created.");
@@ -165,6 +165,26 @@ World::World(const std::string &,
 
 World::~World(void)
 {
+  running = false;
+
+  // In case there are still thread running, first wait all threads to finish their job
+  pthread_mutex_lock(&sync_mutex);
+  // wait for all the last update job to complete - it will
+  // signal the worker_threads_done condition var
+  while (threads_working > 0) {
+    // puts( "main thread waiting for workers to finish" );
+    pthread_cond_wait(&threads_done_cond, &sync_mutex);
+  }
+  pthread_mutex_unlock(&sync_mutex);
+
+  // wake up all threads if their are waiting start condition
+  pthread_cond_broadcast(&threads_start_cond);
+  // waiting for all threads to exit since we already set running=false
+  for(std::vector<pthread_t>::iterator it = worker_thread_ids.begin(); it!=worker_thread_ids.end(); ++it)
+  {
+    pthread_join(*it, 0);
+  }
+
   PRINT_DEBUG1("destroying world %s", Token());
   if (ground)
     delete ground;
@@ -234,18 +254,22 @@ void *World::update_thread_entry(std::pair<World *, int> *thread_info)
 
   pthread_mutex_lock(&world->sync_mutex);
 
-  while (1) {
+  while(1) {
+
     // printf( "thread ID %d waiting for start\n", thread_instance );
     // wait until the main thread signals us
     // puts( "worker waiting for start signal" );
 
     pthread_cond_wait(&world->threads_start_cond, &world->sync_mutex);
     pthread_mutex_unlock(&world->sync_mutex);
+    if(!world->running)
+    {
+      pthread_exit(0);
+    }
 
     // printf( "worker %u thread awakes for task %u\n", thread_instance, task );
     world->ConsumeQueue(thread_instance);
     // printf( "thread %d done\n", thread_instance );
-
     // done working, so increment the counter. If this was the last
     // thread to finish working, signal the main thread, which is
     // blocked waiting for this to happen
@@ -422,7 +446,7 @@ void World::LoadWorldPostHook()
   event_queues.resize(worker_threads + 1);
 
   // printf( "worker threads %d\n", worker_threads );
-
+  worker_thread_ids.clear();
   // kick off the threads
   for (unsigned int t(0); t < worker_threads; ++t) {
     // normal posix pthread C function pointer
@@ -432,9 +456,11 @@ void World::LoadWorldPostHook()
     // local
     // stack var, since it's accssed in the threads
 
+    running = true;
     pthread_t pt;
     pthread_create(&pt, NULL, (func_ptr)World::update_thread_entry,
                    new std::pair<World *, int>(this, t + 1));
+    worker_thread_ids.push_back(pt);
   }
 
   if (worker_threads > 1)

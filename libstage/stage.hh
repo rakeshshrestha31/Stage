@@ -54,6 +54,7 @@
 #include <queue>
 #include <set>
 #include <vector>
+#include <atomic>
 
 // FLTK Gui includes
 #include <FL/Fl.H>
@@ -837,6 +838,9 @@ quickly finding nearby fidcucials */
   pthread_cond_t threads_done_cond; ///< signalled by last worker thread to unblock main thread
   int total_subs; ///< the total number of subscriptions to all models
   unsigned int worker_threads; ///< the number of worker threads to use
+
+  std::vector<pthread_t> worker_thread_ids;  // store the worker thread ids;
+  std::atomic<bool> running;
 
 protected:
   std::list<std::pair<world_callback_t, void *> >

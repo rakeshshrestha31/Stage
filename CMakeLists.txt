@@ -1,6 +1,8 @@
 cmake_minimum_required( VERSION 2.8.7 FATAL_ERROR )
 PROJECT(Stage)
 
+add_compile_options(-std=c++11)
+
 SET( V_MAJOR 4 )
 SET( V_MINOR 3 )
 SET( V_BUGFIX 0 )

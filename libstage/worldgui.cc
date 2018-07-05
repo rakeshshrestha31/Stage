@@ -247,16 +247,16 @@ WorldGui::WorldGui(int width, int height, const char *caption)
 
 WorldGui::~WorldGui()
 {
+  // remove the old callback, wherever it was
+  Fl::remove_idle((Fl_Timeout_Handler)UpdateCallback, this);
+  Fl::remove_timeout((Fl_Timeout_Handler)UpdateCallback, this);
+
   if (mbar)
     delete mbar;
   if (oDlg)
     delete oDlg;
   if (canvas)
     delete canvas;
-
-  // remove the old callback, wherever it was
-  Fl::remove_idle((Fl_Timeout_Handler)UpdateCallback, this);
-  Fl::remove_timeout((Fl_Timeout_Handler)UpdateCallback, this);
 }
 
 void WorldGui::Show()
